@@ -1,81 +1,100 @@
 import streamlit as st
-import pandas as pd
+import time
 
-# Configuração de Layout
-st.set_page_config(page_title="Analista de Notas IF", page_icon="🎓", layout="wide")
+# 1. Configuração de Estilo e Página
+st.set_page_config(
+    page_title="Analytics Acadêmico IF",
+    page_icon="🎓",
+    layout="wide"
+)
 
-def main():
-    # Estilização CSS para melhorar o visual dos cards
-    st.markdown("""
-        <style>
-        .stMetric { background-color: #ffffff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        footer {visibility: hidden;}
-        </style>
+# CSS Customizado para um visual "Clean & Modern"
+st.markdown("""
+    <style>
+    .main { background-color: #f0f2f6; }
+    div[data-testid="stMetricValue"] { font-size: 40px; color: #1E3A8A; }
+    .stProgress > div > div > div > div { background-image: linear-gradient(to right, #4ade80, #22c55e); }
+    .status-card {
+        padding: 20px;
+        border-radius: 10px;
+        border-left: 5px solid #2e7d32;
+        background-color: white;
+        box-shadow: 2px 2px 10px rgba(0,0,0,0.05);
+    }
+    </style>
     """, unsafe_allow_html=True)
 
-    st.title("🎓 Analista de Desempenho Acadêmico")
-    st.subheader("Cálculo de Média e Projeção de Resultados")
+# 2. Lógica de Negócio
+def calcular_status(media):
+    if media >= 6.0:
+        return "APROVADO", "✅", "success"
+    elif media >= 4.0:
+        return "RECUPERAÇÃO", "⚠️", "warning"
+    else:
+        return "REPROVADO", "🚨", "error"
+
+def main():
+    # Header Principal
+    st.title("🎓 Portal de Performance Acadêmica")
+    st.markdown(f"**Data do Sistema:** {time.strftime('%d/%m/%Y')}")
     st.divider()
 
-    # Área de Entrada de Dados (Sidebar para deixar o centro livre para os gráficos)
-    with st.sidebar:
-        st.header("📝 Lançamento de Notas")
-        n1 = st.number_input("Nota 1º Bimestre", min_value=0.0, max_value=10.0, value=5.0, step=0.1)
-        n2 = st.number_input("Nota 2º Bimestre", min_value=0.0, max_value=10.0, value=5.0, step=0.1)
-        
-        st.write("")
-        calcular = st.button("🚀 Calcular e Gerar Relatório", use_container_width=True)
+    # 3. Layout de Colunas
+    col_input, col_display = st.columns([1, 2], gap="large")
 
-    # Lógica Principal (Só aparece após o clique ou se os valores mudarem)
+    with col_input:
+        st.markdown("### 📥 Entrada de Dados")
+        # Inputs modernos com sliders e números
+        n1 = st.slider("Nota do 1º Bimestre", 0.0, 10.0, 5.0, 0.1)
+        n2 = st.slider("Nota do 2º Bimestre", 0.0, 10.0, 5.0, 0.1)
+        
+        st.divider()
+        st.info("**Regra IF:** Média mínima 6.0 para aprovação direta.")
+
+    # Cálculos
     media = (n1 + n2) / 2
-    
-    # Criamos três colunas para as métricas principais
-    col1, col2, col3 = st.columns(3)
+    status, icone, tipo_alerta = calcular_status(media)
 
-    with col1:
-        st.metric(label="Média Final", value=f"{media:.2f}", delta=f"{media-6.0:.1f}")
-    
-    with col2:
-        status = "APROVADO" if media >= 6.0 else "RECUPERAÇÃO" if media >= 4.0 else "REPROVADO"
-        st.metric(label="Situação", value=status)
+    with col_display:
+        st.markdown(f"### 📊 Análise de Rendimento")
         
-    with col3:
-        progresso = (media / 10.0)
-        st.write("**Aproveitamento Total**")
+        # Dashboard de Métricas
+        m1, m2, m3 = st.columns(3)
+        
+        with m1:
+            st.metric("Média Atual", f"{media:.1f}", delta=f"{media-6.0:.1f}" if media != 6.0 else None)
+        
+        with m2:
+            st.metric("Status", status)
+            
+        with m3:
+            # Cálculo de objetivo
+            objetivo = "Meta Atingida" if media >= 6.0 else f"Faltam {6.0 - media:.1f}"
+            st.metric("Objetivo", objetivo)
+
+        # Barra de Progresso Visual
+        st.markdown(f"**Progresso para Aprovação (Meta 6.0):**")
+        progresso = min(media / 6.0, 1.0) # Normaliza até 100% da meta
         st.progress(progresso)
 
-    st.divider()
+        # 4. Painel de Feedback Contextual
+        st.markdown("---")
+        if tipo_alerta == "success":
+            st.balloons()
+            st.success(f"### {icone} Excelente Trabalho!\nO aluno demonstrou domínio dos conteúdos e superou a média mínima.")
+        elif tipo_alerta == "warning":
+            st.warning(f"### {icone} Atenção Necessária\nO aluno está em recuperação. Recomenda-se revisão dos tópicos do 1º bimestre.")
+        else:
+            st.error(f"### {icone} Alerta de Desempenho\nRendimento crítico. Necessário agendamento de tutoria pedagógica.")
 
-    # SEÇÃO DE GRÁFICOS (Aparece logo abaixo das métricas)
-    col_graf1, col_graf2 = st.columns(2)
-
-    with col_graf1:
-        st.markdown("### 📊 Comparativo de Bimestres")
-        # Criando um DataFrame para o gráfico de barras
-        df_notas = pd.DataFrame({
-            "Bimestre": ["1º Bim", "2º Bim"],
-            "Nota": [n1, n2]
-        }).set_index("Bimestre")
-        
-        st.bar_chart(df_notas, color="#2e7d32")
-
-    with col_graf2:
-        st.markdown("### 📈 Evolução vs Meta")
-        # Gráfico de área mostrando a oscilação em relação à média 6.0
-        df_evolucao = pd.DataFrame({
-            "Notas": [n1, n2],
-            "Meta (6.0)": [6.0, 6.0]
-        })
-        st.line_chart(df_evolucao)
-
-    # Feedback Contextual (Mensagens de texto baseadas no resultado)
-    if media >= 6.0:
-        st.balloons()
-        st.success(f"🎉 **Parabéns!** Você atingiu a meta com uma média de {media:.2f}.")
-    elif media >= 4.0:
-        st.warning(f"⚠️ **Quase lá!** Você está em recuperação. Precisa de {(10 - media):.1f} pontos no exame final.")
-    else:
-        st.error("🚨 **Atenção:** Seu rendimento está abaixo do mínimo para recuperação direta.")
+    # 5. Detalhes Adicionais em Expander (Clean UI)
+    with st.expander("🔍 Ver memória de cálculo e detalhes"):
+        st.write(f"""
+        - **Soma das Notas:** {n1 + n2}
+        - **Divisor:** 2
+        - **Média Final:** {media:.2f}
+        - **Distância da Meta:** {abs(6.0 - media):.2f} pontos.
+        """)
 
 if __name__ == "__main__":
     main()
