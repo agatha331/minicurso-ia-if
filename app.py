@@ -1,5 +1,4 @@
 import streamlit as st
-import plotly.graph_objects as go
 
 # Configuração da Página
 st.set_page_config(
